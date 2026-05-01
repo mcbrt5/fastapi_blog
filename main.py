@@ -1,6 +1,14 @@
-def main():
-    print("Hello from fastapi-blog!")
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from posts import posts
 
+app = FastAPI()
 
-if __name__ == "__main__":
-    main()
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/posts", response_class=HTMLResponse, include_in_schema=False)
+def home():
+    return f"<h1>{posts[0]["title"]}</h1>"
+
+@app.get("/api/posts")
+def get_posts():
+    return posts
