@@ -19,13 +19,13 @@ class User(Base):
         default=None,
     )
 
-    posts: Mapped[list[Post]] = relationship(back_populates="author") #forward reference
+    posts: Mapped[list[Post]] = relationship(back_populates="author", cascade="all, delete-orphan") #forward referencing
 
     @property
     def image_path(self) -> str:
         if self.image_file:
             return f"/media/profile_pics/{self.image_file}"
-        return "/static/profile_pics/default.jpg"
+        return "/static/profile_pics/default.svg"
 
 class Post(Base):
     __tablename__ = "posts"
