@@ -10,4 +10,8 @@ wheels/
 .venv
 
 # Local database
-blog.db
+*.db
+*.sqlite3
+
+# dotenv
+.env
