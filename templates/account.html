@@ -37,12 +37,27 @@
             </form>
         </div>
         <hr>
-        <!-- Profile Picture Section (Placeholder) -->
-        <div class="mb-4">
-            <h5>Profile Picture</h5>
-            <p class="text-body-secondary">File upload coming in a future tutorial.</p>
-            <input type="file" class="form-control" disabled>
-        </div>
+        <!-- Profile Picture Section -->
+    <div class="mb-4">
+      <h5>Profile Picture</h5>
+      <!-- Preview container -->
+      <div class="mb-3">
+        <img id="imagePreview"
+             class="rounded-circle d-none object-fit-cover"
+             alt="Image preview"
+             width="150"
+             height="150">
+      </div>
+      <!-- File input and upload button -->
+      <div class="d-flex gap-2 align-items-start">
+        <input type="file"
+               class="form-control file-input-sm"
+               id="pictureInput"
+               accept="image/*">
+        <button type="button" class="btn btn-primary" id="uploadPictureBtn" disabled>Upload</button>
+      </div>
+      <small class="text-body-secondary">Maximum file size: 5MB. Supported formats: JPEG, PNG, GIF, WebP.</small>
+    </div>
         <hr>
         <!-- Password Reset Section (Placeholder) -->
         <div class="mb-4">

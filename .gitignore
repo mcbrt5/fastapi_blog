@@ -15,3 +15,6 @@ wheels/
 
 # dotenv
 .env
+
+# Local files
+media/profile_pics/*
