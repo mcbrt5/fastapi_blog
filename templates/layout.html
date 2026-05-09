@@ -11,7 +11,7 @@
             {% endif %}
         </title>
         
-        <!-- Bootstrap Dark Mode script -->
+        <!-- Bootstrap Dark Mode script (should be in header) -->
         <script src="{{ url_for('static', path='js/theme.js') }}"></script>
         
         <!-- Bootstrap CSS stylesheet -->
@@ -79,10 +79,9 @@
                                         type="button"
                                         data-bs-toggle="modal"
                                         data-bs-target="#createPostModal">New Post</button>
-                                <span id="usernameDisplay" class="navbar-text me-md-2"></span>
-                                <button class="btn btn-outline-light mb-2 mb-md-0 me-md-3"
-                                        type="button"
-                                        id="logoutBtn">Logout</button>
+                                <a class="btn btn-light mb-2 mb-md-0 me-md-3"
+                                href="{{ url_for("account_page") }}"
+                                id="accountBtn">Account</a>
                             </div>
                             <!-- Shown when logged out -->
                             <div id="loggedOutNav">
@@ -217,15 +216,14 @@
                 </div>
             </div>
         </div>
+            <!-- Bootstrap Bundle with Popper -->
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    
+            <!-- Auth State Management-->
+            <script type="module" src="/static/js/auth_state.js"></script>
 
-        <!-- Bootstrap Bundle with Popper -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-        
-        <!-- Auth State Management-->
-        <script type="module" src="/static/js/auth_state.js"></script>
-
-        <!-- Create Post Form Handler (Frontend Create Post) -->
-        <script type="module" src="/static/js/create_post.js"></script>
+            <!-- Create Post Form Handler (Frontend Create Post) -->
+            <script type="module" src="/static/js/create_post.js"></script>
             {% block scripts %}
             {% endblock scripts %}
     </body>

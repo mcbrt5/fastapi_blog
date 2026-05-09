@@ -15,19 +15,18 @@
         </div>
         <h2 class="article-title">{{ post.title }}</h2>
         <p class="article-content">{{ post.content }}</p>
-        <!-- Only show edit/delete options if user_id is 2 (TEMPORARY - until authentication) -->
-                {% if post.user_id == 2 %}
-                    <div class="post-actions mt-3 pt-3 border-top">
-                        <button type="button"
-                                class="btn btn-outline-secondary me-1"
-                                data-bs-toggle="modal"
-                                data-bs-target="#editModal">Edit Post</button>
-                        <button type="button"
-                                class="btn btn-outline-danger"
-                                data-bs-toggle="modal"
-                                data-bs-target="#deleteModal">Delete Post</button>
-                    </div>
-                {% endif %}
+
+        <div id="postActions" class="post-actions mt-3 pt-3 border-top d-none">
+            <button type="button"
+                    class="btn btn-outline-secondary me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editModal">Edit Post</button>
+            <button type="button"
+                    class="btn btn-outline-danger"
+                    data-bs-toggle="modal"
+                    data-bs-target="#deleteModal">Delete Post</button>
+        </div>
+
       </div>
     </div>
   </article>
@@ -107,5 +106,5 @@
     </div>
 {% endblock content %}
 {% block scripts %}
-<script type="module" src="/static/js/edit_delete_post.js" data-post-id="{{ post.id }}"></script>
+    <script type="module" src="/static/js/edit_delete_post.js" data-post-id="{{ post.id }}" data-post-user-id="{{ post.user_id }}"></script>
 {% endblock scripts %}
