@@ -18,3 +18,7 @@ wheels/
 
 # Local files
 media/profile_pics/*
+populate_db/*
+
+# Testing scripts
+populate_db.py

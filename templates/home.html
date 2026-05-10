@@ -1,5 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
+<div id="postContainer">
         {% for post in posts %}
             <article class="content-section py-3 px-4 mb-4">
             <div class="d-flex align-items-start gap-4">
@@ -22,4 +23,15 @@
             </div>
             </article>
         {% endfor %}
+</div>
+
+{% if has_more %}
+    <div class="text-center mb-4">
+        <button type="button" class="btn btn-outline-primary" id="loadMoreBtn">Load More Posts</button>
+    </div>
+{% endif %}
+
 {% endblock content %}
+{% block scripts %}
+    <script type="module" src="/static/js/pagination.js" has-more="{{ has_more }}" limit="{{ limit }}"></script>
+{% endblock scripts %}
