@@ -14,17 +14,14 @@ from contextlib import asynccontextmanager
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 
 import models
-from database import Base, engine, get_db
+from database import engine, get_db
 
 from config import settings
 
-from routers import posts, users
+from routers import posts, users 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    #startups
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
     #shutdown
     await engine.dispose()
