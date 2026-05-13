@@ -17,8 +17,8 @@ wheels/
 .env
 
 # Local files
-media/profile_pics/*
 populate_images/*
 
 # Testing scripts
 populate_db.py
+check_s3.py
