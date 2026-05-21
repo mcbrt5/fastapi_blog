@@ -21,8 +21,10 @@ async def get_posts(
     limit: Annotated[int, Query(ge=1, le=100)] = settings.posts_per_page,
     search: Annotated[str | None, Query(max_length=100)] = None,
 ):
-
-    query = select(models.Post).options(selectinload(models.Post.author))
+    query = select(models.Post).options(
+        selectinload(models.Post.author),
+        selectinload(models.Post.tags),
+    )
     count_query = select(func.count()).select_from(models.Post)
 
     if search:
@@ -37,11 +39,7 @@ async def get_posts(
     total = count_result.scalar() or 0
 
     result = await db.execute(
-        select(models.Post)
-        .options(selectinload(models.Post.author))
-        .order_by(models.Post.date_posted.desc())
-        .offset(skip)
-        .limit(limit),
+        query.order_by(models.Post.date_posted.desc()).offset(skip).limit(limit),
     )
     posts = result.scalars().all()
 
@@ -62,15 +60,35 @@ async def create_post(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    if len(post.tag_ids) > settings.max_tags_per_post:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum {settings.max_tags_per_post} tags per post allowed",
+        )
 
     new_post = models.Post(
         title=post.title,
         content=post.content,
         user_id=current_user.id,
+        tags=[],  # initialize empty list to avoid lazy load
     )
     db.add(new_post)
+    await db.flush()
+
+    if post.tag_ids:
+        result = await db.execute(
+            select(models.Tag).where(models.Tag.id.in_(post.tag_ids))
+        )
+        tags = result.scalars().all()
+        if len(tags) != len(post.tag_ids):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more tags not found",
+            )
+        new_post.tags = tags
+
     await db.commit()
-    await db.refresh(new_post, attribute_names=["author"])
+    await db.refresh(new_post, attribute_names=["author", "tags"])
     return new_post
 
 
@@ -78,7 +96,10 @@ async def create_post(
 async def get_post(post_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(
         select(models.Post)
-        .options(selectinload(models.Post.author))
+        .options(
+            selectinload(models.Post.author),
+            selectinload(models.Post.tags),
+        )
         .where(models.Post.id == post_id)
     )
     post = result.scalars().first()
@@ -98,7 +119,11 @@ async def update_post_full(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(models.Post).where(models.Post.id == post_id))
+    result = await db.execute(
+        select(models.Post)
+        .options(selectinload(models.Post.tags))
+        .where(models.Post.id == post_id)
+    )
     post = result.scalars().first()
 
     if not post:
@@ -106,18 +131,28 @@ async def update_post_full(
             status_code=status.HTTP_404_NOT_FOUND, detail="Post does not exist"
         )
 
-    # Ownership check
     if post.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update this post",
         )
 
+    if len(post_data.tag_ids) > settings.max_tags_per_post:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum {settings.max_tags_per_post} tags per post allowed",
+        )
+
     post.title = post_data.title
     post.content = post_data.content
 
+    tag_result = await db.execute(
+        select(models.Tag).where(models.Tag.id.in_(post_data.tag_ids))
+    )
+    post.tags = tag_result.scalars().all()
+
     await db.commit()
-    await db.refresh(post, attribute_names=["author"])
+    await db.refresh(post, attribute_names=["author", "tags"])
     return post
 
 
@@ -128,7 +163,11 @@ async def update_post_partial(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(models.Post).where(models.Post.id == post_id))
+    result = await db.execute(
+        select(models.Post)
+        .options(selectinload(models.Post.tags))
+        .where(models.Post.id == post_id)
+    )
     post = result.scalars().first()
 
     if not post:
@@ -142,14 +181,25 @@ async def update_post_partial(
             detail="Not authorized to update this post",
         )
 
-    update_data = post_data.model_dump(
-        exclude_unset=True
-    )  # exclude_unset skips data with None
+    update_data = post_data.model_dump(exclude_unset=True)
+
+    if "tag_ids" in update_data:
+        tag_ids = update_data.pop("tag_ids")
+        if len(tag_ids) > settings.max_tags_per_post:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Maximum {settings.max_tags_per_post} tags per post allowed",
+            )
+        tag_result = await db.execute(
+            select(models.Tag).where(models.Tag.id.in_(tag_ids))
+        )
+        post.tags = tag_result.scalars().all()
+
     for field, value in update_data.items():
         setattr(post, field, value)
 
     await db.commit()
-    await db.refresh(post, attribute_names=["author"])
+    await db.refresh(post, attribute_names=["author", "tags"])
     return post
 
 

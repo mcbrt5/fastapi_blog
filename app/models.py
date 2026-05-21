@@ -54,6 +54,28 @@ class User(Base):
         return "/static/profile_pics/default.svg"
 
 
+class PostTag(Base):
+    """Join model for Post <-> Tag many-to-many."""
+
+    __tablename__ = "post_tags"
+
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"), primary_key=True)
+    tag_id: Mapped[int] = mapped_column(ForeignKey("tags.id"), primary_key=True)
+
+
+class Tag(Base):
+    """Represents a post tag."""
+
+    __tablename__ = "tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+
+    posts: Mapped[list[Post]] = relationship(
+        back_populates="tags", secondary=PostTag.__table__, lazy="selectin"
+    )
+
+
 class Post(Base):
     """
     Represents a blog post.
@@ -80,6 +102,10 @@ class Post(Base):
     likes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
     author: Mapped[User] = relationship(back_populates="posts")
+
+    tags: Mapped[list[Tag]] = relationship(
+        back_populates="posts", secondary="post_tags", lazy="selectin"
+    )
 
 
 class PasswordResetToken(Base):

@@ -91,6 +91,23 @@ class Token(BaseModel):
     token_type: str
 
 
+class TagBase(BaseModel):
+    """Base tag schema."""
+
+    name: str = Field(min_length=1, max_length=50)
+
+
+class TagCreate(TagBase):
+    """Schema for creating a tag."""
+
+
+class TagResponse(TagBase):
+    """Schema for tag response."""
+
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+
+
 class PostBase(BaseModel):
     """
     Base post schema with common fields.
@@ -105,45 +122,28 @@ class PostBase(BaseModel):
 
 
 class PostCreate(PostBase):
-    """
-    Post schema for creating a new post.
+    """Post schema for creating a new post."""
 
-    Args:
-        PostBase: Base post schema with common fields.
-
-    """
+    tag_ids: list[int] = Field(default=[])
 
 
 class PostUpdate(BaseModel):
-    """
-    Update post schema.
-
-    Args:
-        BaseModel: Pydantic base model class.
-
-    """
+    """Update post schema."""
 
     title: str | None = Field(default=None, min_length=1, max_length=100)
     content: str | None = Field(default=None, min_length=1)
+    tag_ids: list[int] | None = Field(default=None)
 
 
 class PostResponse(PostBase):
-    """
-    Post schema for response.
+    """Post schema for response."""
 
-    Args:
-        BaseModel: Pydantic base model class.
-
-    """
-
-    model_config = ConfigDict(
-        from_attributes=True
-    )  # allows pydantic to read from sql model
-
+    model_config = ConfigDict(from_attributes=True)
     id: int
     user_id: int
     date_posted: datetime
     author: UserPublic
+    tags: list[TagResponse] = []
 
 
 class PaginatedPostsResponse(BaseModel):

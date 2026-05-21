@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import engine, get_db
 from app.routers import posts as api_posts
+from app.routers import tags as api_tags
 from app.routers import users as api_users
 from app.views import auth as view_auth
 from app.views import posts as view_posts
@@ -169,6 +170,7 @@ def create_app() -> FastAPI:
     # API routes
     application.include_router(api_users.router, prefix="/api/users", tags=["users"])
     application.include_router(api_posts.router, prefix="/api/posts", tags=["posts"])
+    application.include_router(api_tags.router, prefix="/api/tags", tags=["tags"])
 
     # Frontend routes
     application.include_router(view_users.router, prefix="", tags=["users"])

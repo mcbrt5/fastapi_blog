@@ -36,6 +36,9 @@ class Settings(BaseSettings):
 
     frontend_url: str = "http://localhost:8000"
     posts_per_page: int = 10
+    max_tags_per_post: int = 5
+
+    admin_key_hash: str
 
 
 settings = Settings()  # Loaded from .env file
