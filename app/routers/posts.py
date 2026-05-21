@@ -20,6 +20,7 @@ async def get_posts(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = settings.posts_per_page,
     search: Annotated[str | None, Query(max_length=100)] = None,
+    tag: Annotated[str | None, Query(max_length=50)] = None,
 ):
     query = select(models.Post).options(
         selectinload(models.Post.author),
@@ -34,6 +35,11 @@ async def get_posts(
         )
         query = query.where(search_filter)
         count_query = count_query.where(search_filter)
+
+    if tag:
+        tag_filter = models.Post.tags.any(models.Tag.name == tag)
+        query = query.where(tag_filter)
+        count_query = count_query.where(tag_filter)
 
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0

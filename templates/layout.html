@@ -121,6 +121,14 @@
                         </ul>
                     </div>
 
+                    <!-- Tags -->
+                    <div class="content-section py-3 px-4 mb-4">
+                        <h3>Tags</h3>
+                        <div id="tagsList">
+                            <span class="text-body-secondary small">Loading...</span>
+                        </div>
+                    </div>
+
                     <!-- All Users -->
                     <div class="content-section py-3 px-4 mb-4">
                         <h3>Users</h3>
@@ -165,6 +173,12 @@
                             <div class="mb-3">
                                 <label for="content" class="form-label">Content</label>
                                 <textarea class="form-control" id="content" name="content" rows="5" required></textarea>
+                            </div>
+                             <div class="mb-3">
+                                <label class="form-label">Tags <small class="text-body-secondary">(up to 5)</small></label>
+                                <div id="tagCheckboxes" class="d-flex flex-wrap gap-2">
+                                    <!-- populated by JS -->
+                                </div>
                             </div>
                         </div>
                         <div class="modal-footer">

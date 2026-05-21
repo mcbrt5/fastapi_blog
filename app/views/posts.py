@@ -176,3 +176,56 @@ async def search_page(
             "title": f"Search: {q}" if q else "Search",
         },
     )
+
+
+@router.get("/tags/{tag_name}", include_in_schema=False)
+async def tag_page(
+    request: Request,
+    tag_name: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = settings.posts_per_page,
+):
+    tag_result = await db.execute(select(models.Tag).where(models.Tag.name == tag_name))
+    tag = tag_result.scalars().first()
+
+    if not tag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    search_filter = models.Post.tags.any(models.Tag.name == tag_name)
+
+    count_result = await db.execute(
+        select(func.count()).select_from(models.Post).where(search_filter)
+    )
+    total = count_result.scalar() or 0
+
+    result = await db.execute(
+        select(models.Post)
+        .options(
+            selectinload(models.Post.author),
+            selectinload(models.Post.tags),
+        )
+        .where(search_filter)
+        .order_by(models.Post.date_posted.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    posts_list = result.scalars().all()
+
+    has_prev = skip > 0
+    has_next = skip + limit < total
+
+    return templates.TemplateResponse(
+        request,
+        "tag.html",
+        {
+            "posts": posts_list,
+            "tag": tag,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+            "has_prev": has_prev,
+            "has_next": has_next,
+            "title": f"#{tag_name}",
+        },
+    )
