@@ -478,3 +478,15 @@ async def delete_user_picture(
     await delete_profile_image(old_filename)
 
     return current_user
+
+
+@router.get("", response_model=list[UserPublic])
+async def get_users(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    """Return a list of users."""
+    result = await db.execute(
+        select(models.User).order_by(models.User.username.asc()).limit(limit)
+    )
+    return result.scalars().all()

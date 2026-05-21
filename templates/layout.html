@@ -110,6 +110,7 @@
                 <!-- RIGHT: SIDEBAR -->
                 <aside class="col-3">
 
+                    <!-- Menu -->
                     <div class="content-section py-3 px-4 mb-4">
                         <h3>Menu</h3>
                         <p class="text-body-secondary">Check also:</p>
@@ -119,6 +120,15 @@
                             <li class="list-group-item">Calendars</li>
                         </ul>
                     </div>
+
+                    <!-- All Users -->
+                    <div class="content-section py-3 px-4 mb-4">
+                        <h3>Users</h3>
+                        <ul class="list-group" id="usersList">
+                            <li class="list-group-item text-body-secondary">Loading...</li>
+                        </ul>
+                    </div>
+
                 </aside>
 
             </div>
@@ -224,6 +234,9 @@
 
             <!-- Create Post Form Handler (Frontend Create Post) -->
             <script type="module" src="/static/js/create_post.js"></script>
+
+            <!-- Sidebar User Listing -->
+            <script type="module" src="/static/js/sidebar.js"></script>
             {% block scripts %}
             {% endblock scripts %}
     </body>
