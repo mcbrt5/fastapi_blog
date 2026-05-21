@@ -1,15 +1,30 @@
-from __future__ import annotations #cover for forward reference in line 22 for Python<3.14
+"""SQLAlchemy models for the FastAPI blog application."""
+
+from __future__ import (
+    annotations,  # cover for forward reference in line 22 for Python<3.14
+)
 
 from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database import Base
+from app.config import settings
+from app.database import Base
 
-from config import settings
 
 class User(Base):
+    """
+    Represents a user in the blogging system.
+
+    Args:
+        Base: SQLAlchemy declarative base class
+
+    Returns:
+        User: A user instance with profile information and relationships
+
+    """
+
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -22,7 +37,9 @@ class User(Base):
     )
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
 
-    posts: Mapped[list[Post]] = relationship(back_populates="author", cascade="all, delete-orphan") #forward referencing
+    posts: Mapped[list[Post]] = relationship(
+        back_populates="author", cascade="all, delete-orphan"
+    )  # forward referencing
 
     reset_tokens: Mapped[list[PasswordResetToken]] = relationship(
         back_populates="user",
@@ -31,11 +48,21 @@ class User(Base):
 
     @property
     def image_path(self) -> str:
+        """Return the URL for the user's profile image."""
         if self.image_file:
             return f"https://{settings.s3_bucket_name}.s3.{settings.s3_region}.amazonaws.com/profile_pics/{self.image_file}"
         return "/static/profile_pics/default.svg"
 
+
 class Post(Base):
+    """
+    Represents a blog post.
+
+    Args:
+        Base: SQLAlchemy declarative base class
+
+    """
+
     __tablename__ = "posts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -54,7 +81,16 @@ class Post(Base):
 
     author: Mapped[User] = relationship(back_populates="posts")
 
+
 class PasswordResetToken(Base):
+    """
+    Password reset token model.
+
+    Args:
+        Base: SQLAlchemy declarative base class
+
+    """
+
     __tablename__ = "password_reset_tokens"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

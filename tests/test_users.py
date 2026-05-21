@@ -7,12 +7,13 @@ from httpx import AsyncClient
 
 from tests.conftest import auth_header, create_test_user, login_user
 
+
 @pytest.mark.anyio
-async def test_create_user_validation_error(client:AsyncClient):
+async def test_create_user_validation_error(client: AsyncClient):
     response = await client.post(
         "/api/users",
         json={
-            "username": "testuser"
+            "username": "testuser",
         },
     )
 
@@ -20,30 +21,32 @@ async def test_create_user_validation_error(client:AsyncClient):
     assert "email" in response.text
     assert "password" in response.text
 
+
 @pytest.mark.anyio
-async def test_create_user_duplicate_email(client:AsyncClient):
+async def test_create_user_duplicate_email(client: AsyncClient):
     await create_test_user(client)
-    
+
     response = await client.post(
         "/api/users",
         json={
             "username": "different_user",
             "email": "test@example.com",
-            "password": "password123"
+            "password": "password123",
         },
     )
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Email already exists"
 
+
 @pytest.mark.anyio
-async def test_create_user_success(client:AsyncClient):
+async def test_create_user_success(client: AsyncClient):
     response = await client.post(
         "/api/users",
         json={
             "username": "newuser",
             "email": "newuser@example.com",
-            "password": "securepass"
+            "password": "securepass",
         },
     )
 
@@ -56,19 +59,20 @@ async def test_create_user_success(client:AsyncClient):
     assert "password" not in data
     assert "password_hash" not in data
 
+
 @pytest.mark.anyio
-async def test_upload_profile_picture(client:AsyncClient, mocked_aws):
+async def test_upload_profile_picture(client: AsyncClient, mocked_aws):
     user = await create_test_user(client)
     token = await login_user(client)
 
     test_image_path = Path(__file__).parent / "test_image.jpg"
     image_bytes = test_image_path.read_bytes()
-    
+
     response = await client.patch(
         f"/api/users/{user['id']}/picture",
         files={"file": ("profile.jpg", BytesIO(image_bytes), "image/jpeg")},
         headers=auth_header(token),
-        )
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -81,12 +85,13 @@ async def test_upload_profile_picture(client:AsyncClient, mocked_aws):
     assert len(s3_objects["Contents"]) == 1
     assert s3_objects["Contents"][0]["Key"].endswith(data["image_file"])
 
+
 @pytest.mark.anyio
 async def test_forgot_password_send_email(client: AsyncClient):
     await create_test_user(client)
 
     with patch(
-        "routers.users.send_password_reset_email",
+        "app.routers.users.send_password_reset_email",
         new_callable=AsyncMock,
     ) as mock_send:
         response = await client.post(

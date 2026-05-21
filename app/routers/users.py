@@ -1,45 +1,80 @@
-from fastapi import HTTPException, status, Depends, APIRouter, UploadFile, Query, BackgroundTasks
-from schemas import PostResponse, UserCreate, UserPrivate, UserPublic, UserUpdate, Token, PaginatedPostsResponse, ChangePasswordRequest, ForgotPasswordRequest, ResetPasswordRequest
-
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from sqlalchemy import select
+from botocore.exceptions import ClientError
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
+from fastapi.security import OAuth2PasswordRequestForm
+from PIL import UnidentifiedImageError
+from sqlalchemy import delete as sql_delete
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy import delete as sql_delete
-
-from datetime import timedelta, UTC, datetime
-from fastapi.security import OAuth2PasswordRequestForm
-
-from sqlalchemy import func, select
-from auth import create_access_token, hash_password, verify_password, CurrentUser, generate_reset_token, hash_reset_token
-from email_utils import send_password_reset_email
-
-from PIL import UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
-from image_utils import delete_profile_image, process_profile_image, upload_profile_image
 
-import models
-from database import get_db
-from config import settings
-
-from botocore.exceptions import ClientError
+import app.models as models
+from app.auth import (
+    CurrentUser,
+    create_access_token,
+    generate_reset_token,
+    hash_password,
+    hash_reset_token,
+    verify_password,
+)
+from app.config import settings
+from app.database import get_db
+from app.schemas import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    PaginatedPostsResponse,
+    PostResponse,
+    ResetPasswordRequest,
+    Token,
+    UserCreate,
+    UserPrivate,
+    UserPublic,
+    UserUpdate,
+)
+from app.utils.email_utils import send_password_reset_email
+from app.utils.image_utils import (
+    delete_profile_image,
+    process_profile_image,
+    upload_profile_image,
+)
 
 router = APIRouter()
 
+
 @router.post("", response_model=UserPrivate, status_code=status.HTTP_201_CREATED)
 async def create_user(user: UserCreate, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await db.execute(select(models.User).where(func.lower(models.User.username) == user.username.lower()))
+    result = await db.execute(
+        select(models.User).where(
+            func.lower(models.User.username) == user.username.lower()
+        )
+    )
     existing_user = result.scalars().first()
 
     if existing_user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
-    
-    result = await db.execute(select(models.User).where(func.lower(models.User.email) == user.email.lower()))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
+        )
+
+    result = await db.execute(
+        select(models.User).where(func.lower(models.User.email) == user.email.lower())
+    )
     existing_email = result.scalars().first()
 
     if existing_email:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already exists"
+        )
 
     new_user = models.User(
         username=user.username,
@@ -52,13 +87,18 @@ async def create_user(user: UserCreate, db: Annotated[AsyncSession, Depends(get_
 
     return new_user
 
+
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Lookup user by email
-    result = await db.execute(select(models.User).where(func.lower(models.User.email) == form_data.username.lower()))
+    result = await db.execute(
+        select(models.User).where(
+            func.lower(models.User.email) == form_data.username.lower()
+        )
+    )
     user = result.scalars().first()
 
     # Verify is user exists and check if password is correct
@@ -68,18 +108,20 @@ async def login_for_access_token(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Create access token with user id as subject
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(
         data={"sub": str(user.id)},
         expires_delta=access_token_expires,
     )
-    return Token(access_token=access_token, token_type="bearer")
+    return Token(access_token=access_token, token_type="bearer")  # noqa: S106
+
 
 @router.get("/me", response_model=UserPrivate)
 async def get_current_user(current_user: CurrentUser):
     return current_user
+
 
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
 async def forgot_password(
@@ -87,15 +129,25 @@ async def forgot_password(
     background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(models.User).where(func.lower(models.User.email) == request_data.email.lower()))
+    result = await db.execute(
+        select(models.User).where(
+            func.lower(models.User.email) == request_data.email.lower()
+        )
+    )
     user = result.scalars().first()
 
     if user:
-        await db.execute(sql_delete(models.PasswordResetToken).where(models.PasswordResetToken.user_id == user.id))
+        await db.execute(
+            sql_delete(models.PasswordResetToken).where(
+                models.PasswordResetToken.user_id == user.id
+            )
+        )
 
         token = generate_reset_token()
         token_hash = hash_reset_token(token)
-        expires_at = datetime.now(UTC) + timedelta(minutes=settings.reset_token_expire_minutes)
+        expires_at = datetime.now(UTC) + timedelta(
+            minutes=settings.reset_token_expire_minutes
+        )
 
         reset_token = models.PasswordResetToken(
             user_id=user.id,
@@ -113,8 +165,9 @@ async def forgot_password(
         )
 
     return {
-        "message": "If an account exists with this email, you'll receive password reset instructions."
+        "message": "If an account exists with this email, you'll receive password reset instructions.",
     }
+
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(
@@ -122,7 +175,11 @@ async def reset_password(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     token_hash = hash_reset_token(request_data.token)
-    result = await db.execute(select(models.PasswordResetToken).where(models.PasswordResetToken.token_hash == token_hash))
+    result = await db.execute(
+        select(models.PasswordResetToken).where(
+            models.PasswordResetToken.token_hash == token_hash
+        )
+    )
     reset_token = result.scalars().first()
 
     if not reset_token:
@@ -139,7 +196,9 @@ async def reset_password(
             detail="Invalid or expired reset token",
         )
 
-    result = await db.execute(select(models.User).where(models.User.id == reset_token.user_id))
+    result = await db.execute(
+        select(models.User).where(models.User.id == reset_token.user_id)
+    )
     user = result.scalars().first()
 
     if not user:
@@ -147,19 +206,20 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired reset token",
         )
-    
+
     user.password_hash = hash_password(request_data.new_password)
 
     await db.execute(
         sql_delete(models.PasswordResetToken).where(
             models.PasswordResetToken.user_id == user.id,
-        )
+        ),
     )
 
     await db.commit()
     return {
-        "message": "Password reset successfully. You can now log in with your new password."
+        "message": "Password reset successfully. You can now log in with your new password.",
     }
+
 
 @router.patch("/me/password", status_code=status.HTTP_200_OK)
 async def change_password(
@@ -179,13 +239,14 @@ async def change_password(
     await db.execute(
         sql_delete(models.PasswordResetToken).where(
             models.PasswordResetToken.user_id == current_user.id,
-        )
+        ),
     )
 
     await db.commit()
     return {
-        "message": "Password changed successfully."
+        "message": "Password changed successfully.",
     }
+
 
 @router.get("/{user_id}", response_model=UserPublic)
 async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
@@ -196,25 +257,30 @@ async def get_user(user_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
         return user
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+
 @router.get("/{user_id}/posts", response_model=list[PostResponse])
-async def get_user_posts(user_id: int, 
-                        db: Annotated[AsyncSession, Depends(get_db)],
-                        skip: Annotated[int, Query(ge=0)] = 0,
-                        limit: Annotated[int, Query(ge=1, le=100)] = settings.posts_per_page,):
-    
+async def get_user_posts(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = settings.posts_per_page,
+):
+
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
     count_result = await db.execute(
         select(func.count())
         .select_from(models.Post)
         .where(models.Post.user_id == user_id),
     )
     total = count_result.scalar() or 0
-    
+
     result = await db.execute(
         select(models.Post)
         .options(selectinload(models.Post.author))
@@ -235,6 +301,7 @@ async def get_user_posts(user_id: int,
         has_more=has_more,
     )
 
+
 @router.patch("/{user_id}", response_model=UserPrivate)
 async def update_user(
     user_id: int,
@@ -244,36 +311,51 @@ async def update_user(
 ):
     # Ownership check
     if user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this user")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this user",
+        )
 
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
-    if user_update.username is not None and user_update.username.lower() != user.username.lower():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if (
+        user_update.username is not None
+        and user_update.username.lower() != user.username.lower()
+    ):
         result = await db.execute(
-            select(models.User).where(func.lower(models.User.username )== user_update.username.lower()),
-            )
+            select(models.User).where(
+                func.lower(models.User.username) == user_update.username.lower()
+            ),
+        )
         existing_user = result.scalars().first()
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Username already exists",
             )
-    
-    if user_update.email is not None and user_update.email.lower() != user.email.lower():
+
+    if (
+        user_update.email is not None
+        and user_update.email.lower() != user.email.lower()
+    ):
         result = await db.execute(
-            select(models.User).where(func.lower(models.User.email) == user_update.email.lower()),
-            )
+            select(models.User).where(
+                func.lower(models.User.email) == user_update.email.lower()
+            ),
+        )
         existing_email = result.scalars().first()
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already exists",
             )
-    
+
     if user_update.username is not None:
         user.username = user_update.username
     if user_update.email is not None:
@@ -283,19 +365,29 @@ async def update_user(
     await db.refresh(user)
     return user
 
+
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: int, current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]):
-    
+async def delete_user(
+    user_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+
     # Ownership check
     if user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this user")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this user",
+        )
 
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     user = result.scalars().first()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
     old_filename = user.image_file
 
     await db.delete(user)
@@ -304,38 +396,47 @@ async def delete_user(user_id: int, current_user: CurrentUser, db: Annotated[Asy
     if old_filename:
         await delete_profile_image(old_filename)
 
+
 @router.patch("/{user_id}/picture", response_model=UserPrivate)
 async def upload_profile_picture(
-        user_id: int,
-        file: UploadFile,
-        current_user: CurrentUser,
-        db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: int,
+    file: UploadFile,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Ownership check
     if user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this user's picture")
-    
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this user's picture",
+        )
+
     content = await file.read()
 
     if len(content) > settings.max_upload_size_bytes:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
-                            detail=f"File too large. Maximum size is {settings.max_upload_size_bytes // (1024 * 1024) }MB",
-                            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File too large. Maximum size is {settings.max_upload_size_bytes // (1024 * 1024)}MB",
+        )
 
     try:
-        processed_bytes, new_filename = await run_in_threadpool(process_profile_image, content)
+        processed_bytes, new_filename = await run_in_threadpool(
+            process_profile_image, content
+        )
     except UnidentifiedImageError as err:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
-                    detail="Invalid image file. Please upload a valid image (JPEG, PNG, GIF, WebP).",
-                    ) from err
-    
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image file. Please upload a valid image (JPEG, PNG, GIF, WebP).",
+        ) from err
+
     # Upload to S3 (runs in threadpool via async wrapper)
     try:
         await upload_profile_image(processed_bytes, new_filename)
     except ClientError as err:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to upload image. Please try again.",
-            ) from err
+        ) from err
 
     old_filename = current_user.image_file
 
@@ -348,23 +449,28 @@ async def upload_profile_picture(
 
     return current_user
 
+
 @router.delete("/{user_id}/picture", response_model=UserPrivate)
 async def delete_user_picture(
-        user_id: int,
-        current_user: CurrentUser,
-        db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Ownership check
     if user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this user's picture")
-    
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this user's picture",
+        )
+
     old_filename = current_user.image_file
 
     if old_filename is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
-                            detail="No profile picture to delete",
-                            )
-    
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No profile picture to delete",
+        )
+
     current_user.image_file = None
     await db.commit()
     await db.refresh(current_user)

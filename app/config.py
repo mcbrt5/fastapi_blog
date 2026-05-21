@@ -1,5 +1,8 @@
+"""Configuration settings for the FastAPI application."""
+
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -12,6 +15,7 @@ class Settings(BaseSettings):
     secret_key: SecretStr
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    reset_token_expire_minutes: int = 60
 
     # S3 Configuration
     s3_bucket_name: str
@@ -20,13 +24,9 @@ class Settings(BaseSettings):
     s3_secret_access_key: SecretStr | None = None
     s3_endpoint_url: str | None = None
 
-
     max_upload_size_bytes: int = 5 * 1024 * 1024
 
-    posts_per_page: int  = 10
-
-    reset_token_expire_minutes: int = 60
-
+    # Mail Configuration
     mail_server: str = "localhost"
     mail_port: int = 587
     mail_username: str = ""
@@ -35,5 +35,7 @@ class Settings(BaseSettings):
     mail_use_tls: bool = True
 
     frontend_url: str = "http://localhost:8000"
+    posts_per_page: int = 10
 
-settings = Settings() #Loaded from .env file
+
+settings = Settings()  # Loaded from .env file

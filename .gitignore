@@ -1,9 +1,3 @@
-# Local files
-populate_images/
-
-# Testing scripts
-populate_db.py
-check_s3.py
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,macos,visualstudiocode,dotenv
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,macos,visualstudiocode,dotenv
